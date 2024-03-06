@@ -121,7 +121,7 @@ for conf in confs:
             sigma_sigma_disc[t] +=sigma_disc[t0]*sigma_disc[(t+t0)%T]
     sigma_sigma_disc *= 2/T 
     write_corr(binary_file, sigma_sigma_disc)
-    sigma_sigma +=sigma_sigma_disc
+    sigma_sigma +=sigma_sigma_disc/np.sqrt(2)
     
     write_corr(binary_file, sigma_sigma)
     write_corr(binary_file, sigma_disc)  # 3
