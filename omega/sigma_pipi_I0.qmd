@@ -1,0 +1,176 @@
+# 2 particle I=0 ($\sigma-\pi\pi$) 
+
+```{r ,include=FALSE}
+library(Rose)
+library(ggplot2)
+library(plotly)
+library(knitr)
+require(tikzDevice)
+df <- data.frame(x = 1:5, y = 1:5)
+f1 <- function(df) {
+  gg <- ggplot(df, aes(x,y)) + geom_point()
+  assign("ggp", plotly::ggplotly(gg), envir=parent.frame())
+  #ggp
+  df    # NOT returning a plot
+}
+res1 <- f1(df)
+ggp   # Let knit handle the plot
+myplotly(ggplot())
+```
+
+
+
+correlator  $\langle\sigma \sigma\rangle$ full
+
+```{r, echo=FALSE, results='asis', warning=FALSE, dev='tikz'}
+name<-paste0("/home/garofalo/analysis/omega/data/out/twop.dat_raw_correlators")  
+mt<-read_df(name)
+all_obs<- get_all_corr(mt)
+df<-NULL
+
+df<-add_corr_to_df(string = "M_{sigma}",all_obs=all_obs,mt=mt,df = df,
+                   log = FALSE, number = 5,nudge = 0,print_res = FALSE,
+                   rename="sigma"
+                   )
+df<-add_corr_to_df(string = "pipi",all_obs=all_obs,mt=mt,df = df,
+                   log = FALSE, number = 9,nudge = 0,print_res = FALSE,
+                   rename="pipi"
+                   )
+
+df<-add_corr_to_df(string = "pipi-sigma",all_obs=all_obs,mt=mt,df = df,
+                   log = FALSE, number = 11,nudge = 0,print_res = FALSE,
+                   rename="pipi-sigma"
+                   )
+
+
+
+  
+  
+gg<- plot_df_corr_ggplot(df)
+
+fig<- myplotly(gg,"","$t$", "$C_{\\sigma}$", to_print=TRUE )
+```
+
+
+
+correlator  $\langle\sigma(t) \sigma(0)\rangle-\langle\sigma(t+1) \sigma(0)\rangle$ 
+vs  $\langle\sigma(t) \sigma(0)\rangle-\langle\sigma\rangle\langle \sigma\rangle$ 
+
+```{r, echo=FALSE, results='asis', warning=FALSE, dev='tikz'}
+
+dfs<-NULL
+
+#######cor -vev####################
+ name<-paste0("/home/garofalo/analysis/omega/data/out/twop.dat_output")  
+mt<-read_df(name)
+all_obs<- get_all_corr(mt)
+
+
+
+
+dfs<-add_corr_to_df(string = "corr_{I0}_vev_sub0",all_obs=all_obs,mt=mt,df = dfs,
+                    log = TRUE, number = NULL,nudge = 0,print_res = FALSE,
+                    rename = "corr-vev-sigma"
+                    )
+
+dfs<-add_corr_to_df(string = "corr_{I0}_vev_sub1",all_obs=all_obs,mt=mt,df = dfs,
+                   log = TRUE, number = NULL,nudge = 0,print_res = FALSE,
+                   rename = "corr-vev-pipi"
+                   )
+
+####### shift##########
+
+dfs<-add_corr_to_df(string = "corr_{I0}_shift0",all_obs=all_obs,mt=mt,df = dfs,
+                    log = TRUE, number = NULL,nudge = 0,print_res = FALSE,
+                    rename = "corr-shift-sigma"
+                    )
+
+dfs<-add_corr_to_df(string = "corr_{I0}_shift1",all_obs=all_obs,mt=mt,df = dfs,
+                   log = TRUE, number = NULL,nudge = 0,print_res = FALSE,
+                   rename = "corr-shift-pipi"
+                   )
+
+##################  
+gg<- plot_df_corr_ggplot(dfs)
+
+fig<- myplotly(gg,"","$t$", "$C_{\\sigma}$", to_print=TRUE )
+
+```
+
+
+
+
+
+## GEVP I=0
+
+$$
+\begin{pmatrix}
+\langle \sigma(t) \sigma(0)^\dagger \rangle  & \langle \sigma(t) [\pi\pi(0)]^\dagger \rangle\\
+&  \langle \pi\pi(t) [\pi\pi(0)]^\dagger \rangle
+\end{pmatrix}
+$$
+
+meff of the correlatros 
+
+```{r, echo=FALSE, results='asis', warning=FALSE, dev='tikz'}
+ name<-paste0("/home/garofalo/analysis/omega/data/out/twop.dat_output")  
+mt<-read_df(name)
+all_obs<- get_all_corr(mt)
+df<-NULL
+
+df<-add_corr_to_df(string = "M_{I0}_vev_sub0",all_obs=all_obs,mt=mt,df = df,
+                   log = FALSE, number = NULL,nudge = 0,print_res = FALSE,
+                   rename= "M_{sigma}-vev"
+                   )
+
+df<-add_corr_to_df(string = "M_{I0}_vev_sub1",all_obs=all_obs,mt=mt,df = df,
+                   log = FALSE, number = NULL,nudge = 0.2,print_res = FALSE,
+                   rename= "M_{pipi}-vev"
+                   )
+
+df<-add_corr_to_df(string = "M_{I0}_shift0",all_obs=all_obs,mt=mt,df = df,
+                   log = FALSE, number = NULL,nudge = 0,print_res = FALSE,
+                   rename= "M_{sigma}-shift"
+                   )
+
+df<-add_corr_to_df(string = "M_{I0}_shift1",all_obs=all_obs,mt=mt,df = df,
+                   log = FALSE, number = NULL,nudge = 0.2,print_res = FALSE,
+                   rename= "M_{pipi}-shift"
+                   )
+
+  
+  
+gg<- plot_df_corr_ggplot(df)
+
+fig<- myplotly(gg,"","$t$", "$M_{\\sigma}$", to_print=TRUE )
+```
+
+after GEVP
+
+```{r, echo=FALSE, results='asis', warning=FALSE, dev='tikz'}
+ name<-paste0("/home/garofalo/analysis/omega/data/out/twop.dat_output")  
+mt<-read_df(name)
+all_obs<- get_all_corr(mt)
+df<-NULL
+
+df<-add_corr_to_df(string = "GEVP_vev_sub_sigma_pipi_l0",all_obs=all_obs,mt=mt,df = df,
+                   log = FALSE, number = NULL,nudge = 0,print_res = FALSE
+                   )
+
+df<-add_corr_to_df(string = "GEVP_vev_sub_sigma_pipi_l1",all_obs=all_obs,mt=mt,df = df,
+                   log = FALSE, number = NULL,nudge = 0.2,print_res = FALSE
+                   )
+df<-add_corr_to_df(string = "GEVP_shift_sigma_pipi_l0",all_obs=all_obs,mt=mt,df = df,
+                   log = FALSE, number = NULL,nudge = 0,print_res = FALSE
+                   )
+
+df<-add_corr_to_df(string = "GEVP_shift_sigma_pipi_l1",all_obs=all_obs,mt=mt,df = df,
+                   log = FALSE, number = NULL,nudge = 0.2,print_res = FALSE
+                   )
+  
+
+  
+gg<- plot_df_corr_ggplot(df)
+
+fig<- myplotly(gg,"","$t$", "$M$", to_print=TRUE )
+```

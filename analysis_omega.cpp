@@ -62,12 +62,12 @@ void init_global_head(generic_header head) {
     file_head.l2 = head.L;
     file_head.l3 = head.L;
     file_head.nk = 2;
-    file_head.musea = head.mus[1];
+    file_head.musea = head.mus[0];
     file_head.k = (double*)malloc(sizeof(double) * file_head.nk * 2);
     file_head.k[0] = 0;
     file_head.k[1] = 0;
-    file_head.k[2] = head.mus[1];
-    file_head.k[3] = head.mus[1];
+    file_head.k[2] = head.mus[0];
+    file_head.k[3] = head.mus[0];
 
     file_head.nmoms = 1;
     file_head.mom = (double**)malloc(sizeof(double*) * file_head.nmoms);
@@ -237,6 +237,7 @@ int main(int argc, char** argv) {
     symmetrise_jackboot(Njack, 0, head.T, conf_jack);
     symmetrise_jackboot(Njack, 1, head.T, conf_jack);
     symmetrise_jackboot(Njack, 2, head.T, conf_jack);
+    symmetrise_jackboot(Njack, 4, head.T, conf_jack);
 
     ////////////////////////////////////////////////////////////
     // start fitting
@@ -248,17 +249,17 @@ int main(int argc, char** argv) {
     free(M_PS);
     check_correlatro_counter(0);
 
-    double* vev = (double*)malloc(sizeof(double) * Njack);
+    double* vev_sigma = (double*)malloc(sizeof(double) * Njack);
     for (int j = 0;j < Njack;j++) {
-        vev[j] = 0;
+        vev_sigma[j] = 0;
         for (int t = 0;t < head.T;t++) {
-            vev[j] += conf_jack[j][3][t][0];
+            vev_sigma[j] += conf_jack[j][3][t][0];
         }
-        vev[j] /= head.T;
+        vev_sigma[j] /= head.T;
     }
-    printf("vev= %g  +- %g\n", vev[Njack - 1], myres->comp_error(vev));
+    printf("vev_sigma= %g  +- %g\n", vev_sigma[Njack - 1], myres->comp_error(vev_sigma));
 
-    ///// vev subtracted
+    ///// vev_sigma subtracted
     struct fit_type fit_info;
     struct fit_result fit_out;
 
@@ -268,7 +269,7 @@ int main(int argc, char** argv) {
     fit_info.Njack = Njack;
     fit_info.n_ext_P = 1;
     fit_info.ext_P = (double**)malloc(sizeof(double*) * fit_info.n_ext_P);
-    fit_info.ext_P[0] = vev;
+    fit_info.ext_P[0] = vev_sigma;
     fit_info.function = constant_fit;
     fit_info.linear_fit = true;
     fit_info.T = head.T;
@@ -276,19 +277,19 @@ int main(int argc, char** argv) {
 
     struct fit_result corr_minus_vev = fit_fun_to_fun_of_corr(
         option, kinematic_2pt, (char*)"P5P5", conf_jack, namefile_plateaux,
-        outfile,  lhs_vev_sub , "corr-vev", fit_info,
+        outfile, lhs_vev_sub, "corr-vev_sigma", fit_info,
         jack_file);
     check_correlatro_counter(1);
     // free_fit_result(fit_info, fit_out);
     fit_info.restore_default();
-    
+
     fit_info.Nvar = 1;
     fit_info.Npar = 1;
     fit_info.N = 1;
     fit_info.Njack = Njack;
     fit_info.n_ext_P = 1;
     fit_info.ext_P = (double**)malloc(sizeof(double*) * fit_info.n_ext_P);
-    fit_info.ext_P[0] = vev;
+    fit_info.ext_P[0] = vev_sigma;
     fit_info.function = constant_fit;
     fit_info.linear_fit = true;
     fit_info.T = head.T;
@@ -296,9 +297,150 @@ int main(int argc, char** argv) {
 
     struct fit_result fit_me_P5P5 = fit_fun_to_fun_of_corr(
         option, kinematic_2pt, (char*)"P5P5", conf_jack, namefile_plateaux,
-        outfile, lhs_vev_sub_and_meff/* lhs_vev_sub */, "M_{sigma}-vev", fit_info,
+        outfile, lhs_vev_sub_and_meff/* lhs_vev_sub */, "M_{sigma}-vev_sigma", fit_info,
         jack_file);
     check_correlatro_counter(2);
     // free_fit_result(fit_info, fit_out);
     fit_info.restore_default();
+
+
+
+
+    /// GEVP sigma- pipi^I0
+    double* vev_pipiI0 = (double*)malloc(sizeof(double) * Njack);
+    for (int j = 0;j < Njack;j++) {
+        vev_pipiI0[j] = 0;
+        for (int t = 0;t < head.T;t++) {
+            vev_pipiI0[j] += conf_jack[j][6][t][0];
+        }
+        vev_pipiI0[j] /= head.T;
+    }
+    printf("vev_pipiI0= %g  +- %g\n", vev_pipiI0[Njack - 1], myres->comp_error(vev_pipiI0));
+
+    ////////////////////////////////////////////////////////////////
+    /// sub vev and GEVP I0 pipi sigma
+    ////////////////////////////////////////////////////////////////
+    int ncorr_new = head.ncorr;
+
+    fit_info.N = 3;
+    fit_info.Njack = Njack;
+    fit_info.T = head.T;
+    fit_info.corr_id = { 2, 4 , 5 };
+    fit_info.n_ext_P = 2;
+    fit_info.ext_P = (double**)malloc(sizeof(double*) * fit_info.n_ext_P);
+    fit_info.ext_P[0] = vev_sigma;
+    fit_info.ext_P[1] = vev_pipiI0;
+    add_correlators(option, ncorr_new, conf_jack, sub_vev, fit_info);
+
+
+    //// struct to ignore the plateaux range
+    fit_type tmp_info;
+    tmp_info.codeplateaux = true;
+    tmp_info.tmin = 1;
+    tmp_info.tmax = 1;
+    for (int i = 0; i < 3; i++) {
+        char name[NAMESIZE];
+        mysprintf(name, NAMESIZE, "corr_{I0}_vev_sub%d", i);
+        double* tmp = plateau_correlator_function(
+            option, kinematic_2pt, (char*)"P5P5", conf_jack, Njack,
+            namefile_plateaux, outfile, ncorr_new - (3 - i), name, identity, jack_file, tmp_info);
+        free(tmp);
+        check_correlatro_counter(3 + i * 2);
+
+        mysprintf(name, NAMESIZE, "M_{I0}_vev_sub%d", i);
+        double* M_PS = plateau_correlator_function(
+            option, kinematic_2pt, (char*)"P5P5", conf_jack, Njack,
+            namefile_plateaux, outfile, ncorr_new - (3 - i), name, M_eff_T, jack_file);
+        free(M_PS);
+        check_correlatro_counter(3 + i * 2 + 1);
+    }
+
+    ///  GEVP
+    fit_info.N = 2;
+    fit_info.corr_id = { ncorr_new - 3, ncorr_new - 1, ncorr_new - 2 };//diag{ sigma, pipi  }
+    fit_info.value_or_vector = 0; // 0= values
+    fit_info.t0_GEVP = 3;
+    fit_info.GEVP_ignore_warning_after_t = 10;
+    fit_info.verbosity = 2;
+    //fit_info.corr_id={1,2};
+    printf("GEVP_sigma_pipi\n");
+    add_correlators(option, ncorr_new, conf_jack, GEVP_matrix, fit_info);
+    printf(" ncorr after GEVP %d\n", ncorr_new);
+    int id_GEVP_sigma_pipi = ncorr_new;
+
+    fit_info.restore_default();
+
+    double* l0_GEVP = plateau_correlator_function(option, kinematic_2pt, (char*)"P5P5", conf_jack, Njack, namefile_plateaux, outfile, ncorr_new - 2, "GEVP_vev_sub_sigma_pipi_l0", M_eff_T, jack_file);
+    check_correlatro_counter(9);
+
+    double* l1_GEVP = plateau_correlator_function(option, kinematic_2pt, (char*)"P5P5", conf_jack, Njack, namefile_plateaux, outfile, ncorr_new - 1, "GEVP_vev_sub_sigma_pipi_l1", M_eff_T, jack_file);
+    check_correlatro_counter(10);
+
+    free(l0_GEVP);free(l1_GEVP);
+
+    ////////////////////////////////////////////////////////////////
+    /// shift and GEVP I0 pipi sigma
+    ////////////////////////////////////////////////////////////////
+
+    fit_info.N = 3;
+    fit_info.Njack = Njack;
+    fit_info.T = head.T;
+    fit_info.corr_id = { 2, 4 , 5 };
+    fit_info.n_ext_P = 0;
+    add_correlators(option, ncorr_new, conf_jack, shift_corr, fit_info);
+
+
+    //// struct to ignore the plateaux range
+    tmp_info.codeplateaux = true;
+    tmp_info.tmin = 1;
+    tmp_info.tmax = 1;
+    for (int i = 0; i < 3; i++) {
+        char name[NAMESIZE];
+        mysprintf(name, NAMESIZE, "corr_{I0}_shift%d", i);
+        double* tmp = plateau_correlator_function(
+            option, kinematic_2pt, (char*)"P5P5", conf_jack, Njack,
+            namefile_plateaux, outfile, ncorr_new - (3 - i), name, identity, jack_file, tmp_info);
+        free(tmp);
+        check_correlatro_counter(11 + i * 2);
+
+        mysprintf(name, NAMESIZE, "M_{I0}_shift%d", i);
+        double* M_PS = plateau_correlator_function(
+            option, kinematic_2pt, (char*)"P5P5", conf_jack, Njack,
+            namefile_plateaux, outfile, ncorr_new - (3 - i), name, M_eff_sinh_T, jack_file);
+        free(M_PS);
+        check_correlatro_counter(11 + i * 2 + 1);
+    }
+
+    ///  GEVP
+    fit_info.N = 2;
+    fit_info.corr_id = { ncorr_new - 3, ncorr_new - 1, ncorr_new - 2 };//diag{ sigma, pipi  }
+    fit_info.value_or_vector = 0; // 0= values
+    fit_info.t0_GEVP = 3;
+    fit_info.GEVP_ignore_warning_after_t = 10;
+    fit_info.verbosity = 2;
+    //fit_info.corr_id={1,2};
+    printf("GEVP_sigma_pipi\n");
+    add_correlators(option, ncorr_new, conf_jack, GEVP_matrix, fit_info);
+    printf(" ncorr after GEVP %d\n", ncorr_new);
+    int id_GEVP_shift_sigma_pipi = ncorr_new;
+
+    fit_info.restore_default();
+
+    l0_GEVP = plateau_correlator_function(option, kinematic_2pt, (char*)"P5P5", conf_jack, Njack, namefile_plateaux, outfile, ncorr_new - 2,
+        "GEVP_shift_sigma_pipi_l0", M_eff_log, jack_file);
+    check_correlatro_counter(17);
+
+    l1_GEVP = plateau_correlator_function(option, kinematic_2pt, (char*)"P5P5", conf_jack, Njack, namefile_plateaux, outfile, ncorr_new - 1,
+        "GEVP_shift_sigma_pipi_l1", M_eff_log, jack_file);
+    check_correlatro_counter(18);
+
+    free(l0_GEVP);free(l1_GEVP);
+
+    // l0_GEVP = plateau_correlator_function(option, kinematic_2pt, (char*)"P5P5", conf_jack, Njack, namefile_plateaux, outfile, ncorr_new - 2, "GEVP_shift_sigma_pipi_lam0", identity, jack_file);
+    // // check_correlatro_counter(17);
+
+    // l1_GEVP = plateau_correlator_function(option, kinematic_2pt, (char*)"P5P5", conf_jack, Njack, namefile_plateaux, outfile, ncorr_new - 1, "GEVP_shift_sigma_pipi_lam1", identity, jack_file);
+    // check_correlatro_counter(18);
+
+
 }
