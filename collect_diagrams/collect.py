@@ -28,7 +28,7 @@ imom_twop_to_one='000-000-000'
 import time
 
 outfile = "twop.dat"
-ncorr=6
+ncorr=7
 T=96
 L=T//2
 ###########################
@@ -110,7 +110,7 @@ for conf in confs:
         sigma_sigma-=sigma 
    
     sigma_sigma/=T
-    write_corr(binary_file, sigma_sigma)
+    write_corr(binary_file, sigma_sigma) #0
 
     sigma_disc = np.load(dir+'/annhilation/loop-1/'+conf+'/corr_annhilation_loop-1_conf_'+conf+'_g0_0_mom_'+imom_one+'.npy')
     
@@ -120,11 +120,11 @@ for conf in confs:
         for t0 in range(T):
             sigma_sigma_disc[t] +=sigma_disc[t0]*sigma_disc[(t+t0)%T]
     sigma_sigma_disc *= 2/T 
-    write_corr(binary_file, sigma_sigma_disc)
-    sigma_sigma +=sigma_sigma_disc/np.sqrt(2)
+    write_corr(binary_file, sigma_sigma_disc) #1
+    sigma_sigma +=sigma_sigma_disc
     
-    write_corr(binary_file, sigma_sigma)
-    write_corr(binary_file, sigma_disc)  # 3
+    write_corr(binary_file, sigma_sigma) #2
+    write_corr(binary_file, sigma_disc*np.sqrt(2))  # 3
     ####################
     D1.fill(0)
     B1.fill(0)
@@ -151,19 +151,38 @@ for conf in confs:
         for t0 in range(T):
             A[t] += L2[t0]*L2[(t+t0)%T]
     A /= T
-    write_corr(binary_file, D1+D2-1.5*(B1+B2+B3+B4)+0.5*(E1+E2)+3*A) # 4
+    write_corr(binary_file, D1+D2-1.5*(B1+B2+B3+B4)+0.5*(E1+E2)+3*A) # 4    pipi-pipi
 
     T1.fill(0)
     T2.fill(0)
     A1.fill(0)
     for s in range(0,T):
-        T1 = np.load(dir+'/two/pipi-one-T1/'+conf+'/corr_two_pipi-one-T1_conf_'+conf+'_g0_5_g1_5_g2_0_mom_'+imom_twop_to_one+'_src_'+str(s)+'.npy')
-        T2 = np.load(dir+'/two/pipi-one-T2/'+conf+'/corr_two_pipi-one-T2_conf_'+conf+'_g0_5_g1_5_g2_0_mom_'+imom_twop_to_one+'_src_'+str(s)+'.npy')
+        T1 += np.load(dir+'/two/pipi-one-T1/'+conf+'/corr_two_pipi-one-T1_conf_'+conf+'_g0_5_g1_5_g2_0_mom_'+imom_twop_to_one+'_src_'+str(s)+'.npy')
+        T2 += np.load(dir+'/two/pipi-one-T2/'+conf+'/corr_two_pipi-one-T2_conf_'+conf+'_g0_5_g1_5_g2_0_mom_'+imom_twop_to_one+'_src_'+str(s)+'.npy')
         for t in range(T):
-            A1[s] += L2[t]* sigma_disc[(s+t)%T]
-    write_corr(binary_file, np.sqrt(6)*(T1+T2)/2.0 - np.sqrt(6)* A) # 5
+            A1[s] += L2[(s+t)%T]* sigma_disc[t]
+            A1[s] += np.conj(L2[t]* sigma_disc[(s+t)%T])
+        T1 += np.conj(np.load(dir+'/two/one-pipi-T1/'+conf+'/corr_two_one-pipi-T1_conf_'+conf+'_g0_0_g1_5_g2_5_mom_'+imom_twop_to_one+'_src_'+str(s)+'.npy'))
+        T2 += np.conj(np.load(dir+'/two/one-pipi-T2/'+conf+'/corr_two_one-pipi-T2_conf_'+conf+'_g0_0_g1_5_g2_5_mom_'+imom_twop_to_one+'_src_'+str(s)+'.npy')    )
+            
+    A1 /= 2*T 
+    T1 /= 2*T
+    T2 /= 2*T   
+    write_corr(binary_file, np.sqrt(6)*(T1+T2)/2.0 - np.sqrt(6)* A1) # 5      # pipi-sigma
+    
+    # vev pipi^I0
+    write_corr(binary_file, L2 *np.sqrt(3)) # 6  vev_pipi 
+    
     tend = time.time()
     print("time: ",tend-tstart)
+    
+    #new format 
+    # np.load("filename")[source_position]
+    
+    
+    
+    
+    
      # print(sigma)
     # D1 = np.load('./'+dir+'/two/pipi-pipi-D1/2700/corr_two_pipi-pipi-D1_conf_'+iconf+'_g0_5_g1_5_g2_5_g3_5_mom_'+imom+'_src_3.npy')
     # D2 = np.load('./'+dir+'/two/pipi-pipi-D2/2700/corr_two_pipi-pipi-D2_conf_'+iconf+'_g0_5_g1_5_g2_5_g3_5_mom_'+imom+'_src_3.npy')
